@@ -1,0 +1,110 @@
+---
+title: "US N2O data comparison"
+author: "Dr. Chih-Yu Hung"
+date: "2024-04-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+```
+
+## Check if the N2O emission in the US has similar non-linear curve with Canada
+
+```{r US data wrangling}
+US_data <- read.csv("Input/US_N2OEF.csv")
+CA_data <- read.csv("Input/Rochette_2018_SAS input2.csv")
+
+US_data <- US_data %>%
+  filter (Crop.type == "Annual") %>%
+  filter (Application.amount > 0) %>%
+  filter (EF > 0) %>%
+  filter (Precipitation > 0)
+
+#Convert soil texture to three texture system
+US_data <- US_data %>%
+  mutate(texture =
+  case_when(tolower(Soil.type) %in% c("clay", "silty clay", "silty clay loam", "clay loam", "sandy clay") ~ "Fine",
+            tolower(Soil.type) %in% c("loam soil", "loam", "silt loam", "silt") ~ "Medium",
+            TRUE ~ "Coarse")
+  )
+
+
+CA_data <- CA_data %>%
+  filter (EF > 0) %>%
+  mutate (EF = EF /100) %>%
+  mutate (Precipitation = prec1)
+
+```
+
+## Plot the results
+
+```{r ggplot for USA data, echo=FALSE}
+# Define the exponential function
+exponential_func <- function(x, a, b) {
+  return(a*exp(a * x) + b)
+}
+
+US_test <- US_data %>%
+  filter(Precipitation < 1000)
+
+
+#medium only or coarse
+US_medium <- US_data %>% 
+  filter(texture == "Medium")
+
+US_coarse <- US_data %>% 
+  filter(texture == "Coarse")
+
+
+non.fit <- function (data, a, b) {
+  fit <- nls(EF ~ exponential_func(Precipitation, a, b), 
+           data = data, 
+           start = list(a = a, b = b))
+  residuals <- residuals(fit)
+  SS_RES <- sum(residuals^2)
+  SS_TOT <- sum((data$EF - mean(data$EF))^2)
+  r_squared <- 1 - (SS_RES / SS_TOT)
+  return(r_squared)
+}
+
+
+R2_medium <- non.fit(US_medium, 0.005, 0.1 )
+
+
+
+
+
+Rsquare <- function(data) {
+  x <- data$Precipitation
+  y <- data$EF
+  ybar <- mean(y)
+  #obtain yhat
+  yhat <- exp(0.00558*x - 7.701)
+  SS_RES <- sum((y-yhat)^2)
+  SS_TOT <- sum((y-ybar)^2)
+  r_squared <- (1 - (SS_RES / SS_TOT))
+  return(r_squared)
+ }
+
+Rsquare(CA_data)
+Rsquare(US_test)
+
+
+ggplot(US_coarse, aes(x = Precipitation, y = EF, colour=texture)) +
+    xlab("Precipitation in growing season") +
+    ylab("EF") +
+    stat_smooth(color = 1, method = 'nls', formula = 'y~exp(a*x+b)',
+                method.args = list(start=c(a=0.01, b=0)), se=FALSE) +
+    geom_point(size=4, pch=21,color = "black", stroke=1.5, aes(fill=texture))
+
+ggplot(CA_data, aes(x = prec1, y = EF)) +
+  geom_point(size = 3, pch = 23, color ="black") +
+  geom_point(data = US_test,aes(x = Precipitation, y = EF), color = "blue", pch = 22, size = 3)
+
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
