@@ -1,0 +1,179 @@
+---
+title: "Growing season precipitation"
+author: "Dr. Chih-Yu Hung"
+date: "2024-09-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse); library(data.table)
+
+Rain <- fread("../US data/Climate Normals/Precipitation_perCounty.csv", header = TRUE)
+Rain <- Rain %>%
+   separate(County_State, into = c("County", "State"), sep = " - ")
+
+```
+
+## Write a function to calculate avg. precipitation during growing seasons
+
+```{r funtion for the work}
+Rain.sum <- function (county, state, s.year, f.year) {
+  # Define the years and months (May to October)
+  years <- c(s.year:f.year)
+  months <- sprintf("%02d", 5:10)  # 5th to 10th months (May to October)
+
+  # Create the pattern for matching precipitation columns for May to October
+  patterns <- paste0("P_", rep(years, each = length(months)), months)
+  
+  # Find the matching columns in the dataframe
+  matching_columns <- grep(paste(patterns, collapse = "|"), names(Rain), value = TRUE)
+
+  # Subset the data for the specified county and state
+  city.t <- subset(Rain, County == paste0(county, " County") & State == state)
+  
+  if (nrow(city.t) == 0) {
+    return(NA)  # Return NA if no matching row is found
+  }
+
+  # Subset only the matching columns (May to October for the specified years)
+  city.t <- city.t[, matching_columns, drop = FALSE]
+  
+  # Convert the data to numeric for calculation
+  city.t.numeric <- as.numeric(unlist(city.t))
+
+  # Calculate the mean, excluding NA values
+  city.avg <- sum(city.t.numeric, na.rm = TRUE)
+  
+  return(city.avg)
+}
+
+```
+
+
+```{r Burzaco et al., 2013}
+#West Lafayette,Tippecanoe, Indiana. 2010, 2011
+Rain.sum("Tippecanoe","Indiana", 2010, 2010) #606
+Rain.sum("Tippecanoe","Indiana", 2011, 2011) #649
+
+```
+
+```{r Collins et al., 2011}
+#Prosser, Benton, Washington. 2007-2008
+Rain.sum("Benton","Washington", 2007, 2007) #67
+
+Rain.sum("Benton","Washington", 2008, 2008) #42
+```
+
+
+
+```{r Dusenbury et al., 2008}
+#Gallatin, Bozeman, Montana. 2004
+Rain.sum("Gallatin","Montana", 2004, 2004) #390
+
+Rain.sum("Gallatin","Montana", 2005, 2005) #376
+```
+```{r Guzman et al., 2015}
+#Ames, Story, Iowa. 2009-2010
+Rain.sum("Story","Iowa", 2009, 2009) #666
+
+Rain.sum("Story","Iowa", 2010, 2010) #967
+```
+
+```{r Halvorson et al., 2010}
+#Fort Collins, Larimer, Colorado. 2007-2008
+Rain.sum("Larimer","Colorado", 2007, 2007) #286
+
+Rain.sum("Larimer","Colorado", 2008, 2008) #290
+```
+
+```{r Jarecki et al., 2009}
+#Ames, Story, Iowa. 2005-2006
+Rain.sum("Story","Iowa", 2005, 2006) #1079
+```
+
+
+
+```{r Koehn et al., 2021}
+#Kimberly, Story, Idaho. 2013-2016
+Rain.sum("Twin Falls","Idaho", 2013, 2013) #84
+Rain.sum("Twin Falls","Idaho", 2014, 2014) #156
+Rain.sum("Twin Falls","Idaho", 2015, 2015) #162
+Rain.sum("Twin Falls","Idaho", 2016, 2016) #178
+```
+
+```{r Liebig et al., 2008}
+#Mandan, Morton, North Dakota. 2005
+Rain.sum("Morton","North Dakota", 2005, 2005) #395
+```
+
+```{r Omonode et al., 2019}
+#West Lafayette,Tippecanoe, Indiana. 2015, 2016
+Rain.sum("Tippecanoe","Indiana", 2015, 2015) #682
+Rain.sum("Tippecanoe","Indiana", 2016, 2016) #618
+
+```
+
+```{r Shoji et al., 2001}
+#Longmont, Boulder, Colorado. 1993
+Rain.sum("Boulder","Colorado", 1993, 1993) #300
+```
+
+```{r Thornto et al., 1996}
+#Jackson, Madison, Tennessee. 1993
+Rain.sum("Madison","Tennessee", 1993, 1993) #512
+```
+
+
+
+
+```{r Sainju et al., 2012}
+#Sidney, Richland, Montana. 2008-2011
+Temp.avg("Richland","Montana", 2008, 2008) #5.69
+Temp.avg("Richland","Montana", 2009, 2009) #5.23
+Temp.avg("Richland","Montana", 2010, 2010) #5.32
+Temp.avg("Richland","Montana", 2011, 2011) #5.58
+```
+
+```{r Sainju et al., 2012}
+#Nesson Valley, Williams, North Dakota. 2008-2011
+Temp.avg("Williams","North Dakota", 2008, 2008) #4.19
+Temp.avg("Williams","North Dakota", 2009, 2009) #3.34
+Temp.avg("Williams","North Dakota", 2010, 2010) #4.50
+Temp.avg("Williams","North Dakota", 2011, 2011) #4.48
+```
+```{r Nash et al., 2012}
+#Novelty, Knox, Missouri. 2008-2011
+Temp.avg("Knox","Missouri", 2009, 2009) #10.55
+Temp.avg("Knox","Missouri", 2010, 2010) #11.17
+```
+
+```{r Parkin et al., 2014}
+#Boone, Iowa. 2009-2011
+Temp.avg("Boone","Iowa", 2009, 2009) #8.21
+Temp.avg("Boone","Iowa", 2010, 2010) #8.92
+Temp.avg("Boone","Iowa", 2011, 2011) #9.01
+
+```
+
+```{r Fernandez et al., 2016}
+#Wells,Faribault, Minnesota. 2014-2015 #only avg. number available
+Temp.avg("Faribault","Minnesota", 2014, 2015) #7.16
+```
+
+```{r Venterea et al., 2016}
+#St Paul,Ramsey, Minnesota. 2014-2015 #only avg. number available
+Temp.avg("Ramsey","Minnesota", 2014, 2015) #7.1
+```
+
+
+
+
+```{r Mahama et al., 2020}
+#Manhattan,Riley, Kansas. 2013
+Temp.avg("Riley","Kansas", 2013, 2013) #11.23
+
+Temp.avg("Riley","Kansas", 2014, 2014) #11.46
+```
+
+

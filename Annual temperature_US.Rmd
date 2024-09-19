@@ -1,0 +1,120 @@
+---
+title: "Annual temperature"
+author: "Dr. Chih-Yu Hung"
+date: "2024-07-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse); library(data.table)
+
+Temp <- fread("../US data/Climate Normals/Temperature_perCounty.csv", header = TRUE)
+Temp <- Temp %>%
+   separate(County_State, into = c("County", "State"), sep = " - ")
+
+```
+
+## Write a function to calculate avg. temperature
+
+```{r funtion for the work}
+Temp.avg <- function (county, state, s.year, f.year) {
+  years <- c(s.year:f.year) 
+  pattern <- paste0("T_(", paste(years, collapse = "|"), ")", ".*")
+  matching_columns <- grep(pattern, names(Temp), value = TRUE)
+
+  # Correct variable names and matching logic
+  city.t <- subset(Temp, County == paste0(county, " County") & State == state)
+  if (nrow(city.t) == 0) {
+    return(NA)  # Return NA if no matching row is found
+  }
+
+  # Ensure subsetting columns correctly
+  city.t <- city.t[, matching_columns]
+
+  # Convert to numeric
+  city.t.numeric <- as.numeric(unlist(city.t))
+
+  # Calculate the mean
+  city.avg <- mean(city.t.numeric, na.rm = TRUE)
+  return(city.avg)
+}
+
+```
+
+
+```{r Dusenbury et al., 2008}
+#Gallatin, Bozeman, Montana. 2004
+Temp.avg("Gallatin","Montana", 2004, 2004) #4.35
+
+Temp.avg("Gallatin","Montana", 2005, 2005) #4.20
+```
+
+```{r Sainju et al., 2012}
+#Sidney, Richland, Montana. 2008-2011
+Temp.avg("Richland","Montana", 2008, 2008) #5.69
+Temp.avg("Richland","Montana", 2009, 2009) #5.23
+Temp.avg("Richland","Montana", 2010, 2010) #5.32
+Temp.avg("Richland","Montana", 2011, 2011) #5.58
+```
+
+```{r Sainju et al., 2012}
+#Nesson Valley, Williams, North Dakota. 2008-2011
+Temp.avg("Williams","North Dakota", 2008, 2008) #4.19
+Temp.avg("Williams","North Dakota", 2009, 2009) #3.34
+Temp.avg("Williams","North Dakota", 2010, 2010) #4.50
+Temp.avg("Williams","North Dakota", 2011, 2011) #4.48
+```
+```{r Nash et al., 2012}
+#Novelty, Knox, Missouri. 2008-2011
+Temp.avg("Knox","Missouri", 2009, 2009) #10.55
+Temp.avg("Knox","Missouri", 2010, 2010) #11.17
+```
+
+```{r Parkin et al., 2014}
+#Boone, Iowa. 2009-2011
+Temp.avg("Boone","Iowa", 2009, 2009) #8.21
+Temp.avg("Boone","Iowa", 2010, 2010) #8.92
+Temp.avg("Boone","Iowa", 2011, 2011) #9.01
+
+```
+
+```{r Fernandez et al., 2016}
+#Wells,Faribault, Minnesota. 2014-2015 #only avg. number available
+Temp.avg("Faribault","Minnesota", 2014, 2015) #7.16
+```
+
+```{r Venterea et al., 2016}
+#St Paul,Ramsey, Minnesota. 2014-2015 #only avg. number available
+Temp.avg("Ramsey","Minnesota", 2014, 2015) #7.1
+```
+
+```{r Shoji et al., 2001}
+#Longmont, Boulder, Colorado. 2014-2015 #only avg. number available
+Temp.avg("Boulder","Colorado", 1993, 1993) #5.55
+```
+
+
+
+```{r Mahama et al., 2020}
+#Manhattan,Riley, Kansas. 2013
+Temp.avg("Riley","Kansas", 2013, 2013) #11.23
+
+Temp.avg("Riley","Kansas", 2014, 2014) #11.46
+```
+
+
+
+```{r Burzaco et al., 2013}
+#West Lafayette,Tippecanoe, Indiana. 2010, 2011
+Temp.avg("Tippecanoe","Indiana", 2010, 2010) #10.98
+Temp.avg("Tippecanoe","Indiana", 2011, 2011) #11.29
+
+```
+
+```{r Omonode et al., 2019}
+#West Lafayette,Tippecanoe, Indiana. 2015, 2016
+Temp.avg("Tippecanoe","Indiana", 2015, 2015) #10.58
+Temp.avg("Tippecanoe","Indiana", 2016, 2016) #11.71
+
+```

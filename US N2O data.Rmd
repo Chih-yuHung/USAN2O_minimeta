@@ -14,8 +14,9 @@ library(ggplot2)
 
 ```{r US data wrangling}
 US_data <- read.csv("Input/US_N2OEF.csv")
-CA_data <- read.csv("Input/Rochette_2018_SAS input2.csv")
+CA_data <- read.csv("Input/Rochette_2018_PvsEF.csv") #The data from Rochette 2018 Fig 3
 
+#US data wrangling
 US_data <- US_data %>%
   filter (Crop.type == "Annual") %>%
   filter (Application.amount > 0) %>%
@@ -31,20 +32,68 @@ US_data <- US_data %>%
   )
 
 
-CA_data <- CA_data %>%
-  filter (EF > 0) %>%
-  mutate (EF = EF /100) %>%
-  mutate (Precipitation = prec1)
-
 ```
 
 ## Plot the results
 
 ```{r ggplot for USA data, echo=FALSE}
-# Define the exponential function
-exponential_func <- function(x, a, b) {
-  return(a*exp(a * x) + b)
+
+#define function for nonlinear regression
+non.fit <- function (data, a, b) {
+  fit <- nls(EF ~ exp(a*Precipitation + b), 
+           data = data, 
+           start = list(a = a, b = b))
+  residuals <- residuals(fit)
+  SS_RES <- sum(residuals^2)
+  SS_TOT <- sum((data$EF - mean(data$EF))^2)
+  r_squared <- 1 - (SS_RES / SS_TOT)
+
+  # Printing results
+  cat("R-squared:", r_squared, "\n")
+  cat("Fitted a:", coef(fit)[1], "\n")
+  cat("Fitted b:", coef(fit)[2], "\n")
+  
+  # Generate a sequence of x values for plotting the curve
+  x <- data$Precipitation
+  y <- data$EF
+  x_seq <- seq(min(x), max(x), length.out = length(x))
+
+  #plot the curve and data
+  plot(x, y, pch = 16, col = "blue", xlab = "x", ylab = "y", main = "Fitted Curve")
+
+  # Add the fitted curve to the plot
+  #plot(x_seq, predict(fit, newdata = data.frame(x = x_seq)), col = "red", lwd = 2)
+  lines(x_seq, predict(fit, newdata = data.frame(Precipitation = x_seq)), col = "red", lwd = 2)
+
+  # Add legend
+  legend("topright", legend = c("Data", "Fitted Curve"), col = c("blue", "red"), pch = c(16, NA), lwd = c(NA, 2), lty = c(NA, 1))
 }
+
+
+
+
+
+
+#define the function for Rsquare by using the model in Rochette 2018
+Rsquare <- function(data) {
+  x <- data$Precipitation
+  y <- data$EF
+  ybar <- mean(y)
+  #obtain yhat
+  #yhat <- exp(0.00558*x - 7.701)
+  yhat <- exp(0.005019847*x - 6.859982)
+  SS_RES <- sum((y-yhat)^2)
+  SS_TOT <- sum((y-ybar)^2)
+  r_squared <- (1 - (SS_RES / SS_TOT))
+  cat("R-squared:", r_squared, "\n")
+}
+
+
+non.fit(US_data,0.005,0.1)
+non.fit(CA_data,0.005,-7)
+
+Rsquare(CA_data)
+
 
 US_test <- US_data %>%
   filter(Precipitation < 1000)
@@ -58,38 +107,18 @@ US_coarse <- US_data %>%
   filter(texture == "Coarse")
 
 
-non.fit <- function (data, a, b) {
-  fit <- nls(EF ~ exponential_func(Precipitation, a, b), 
-           data = data, 
-           start = list(a = a, b = b))
-  residuals <- residuals(fit)
-  SS_RES <- sum(residuals^2)
-  SS_TOT <- sum((data$EF - mean(data$EF))^2)
-  r_squared <- 1 - (SS_RES / SS_TOT)
-  return(r_squared)
-}
 
-
-R2_medium <- non.fit(US_medium, 0.005, 0.1 )
+ggplot() +
+  geom_point(data = CA_data, aes(x = Precipitation, y = EF, shape = Drain2), color = "blue", size = 3, alpha = 0.5) +
+  scale_shape_manual(values = c("square", "triangle", "circle"),
+                      breaks = c("Coarse", "Medium", "Fine"),
+                      labels = c("Coarse", "Medium", "Fine")) +
+  guides(shape = guide_legend(title = "Drain2")) 
 
 
 
 
 
-Rsquare <- function(data) {
-  x <- data$Precipitation
-  y <- data$EF
-  ybar <- mean(y)
-  #obtain yhat
-  yhat <- exp(0.00558*x - 7.701)
-  SS_RES <- sum((y-yhat)^2)
-  SS_TOT <- sum((y-ybar)^2)
-  r_squared <- (1 - (SS_RES / SS_TOT))
-  return(r_squared)
- }
-
-Rsquare(CA_data)
-Rsquare(US_test)
 
 
 ggplot(US_coarse, aes(x = Precipitation, y = EF, colour=texture)) +
@@ -99,9 +128,9 @@ ggplot(US_coarse, aes(x = Precipitation, y = EF, colour=texture)) +
                 method.args = list(start=c(a=0.01, b=0)), se=FALSE) +
     geom_point(size=4, pch=21,color = "black", stroke=1.5, aes(fill=texture))
 
-ggplot(CA_data, aes(x = prec1, y = EF)) +
+ggplot(CA_data, aes(x = Precipitation, y = EF, colour = texture)) +
   geom_point(size = 3, pch = 23, color ="black") +
-  geom_point(data = US_test,aes(x = Precipitation, y = EF), color = "blue", pch = 22, size = 3)
+  geom_point(data = CA_data,aes(x = Precipitation, y = EF), color = "blue", pch = 22, size = 3)
 
 
 
