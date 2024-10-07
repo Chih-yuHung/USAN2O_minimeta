@@ -14,9 +14,9 @@ library(ggplot2)
 
 ```{r US data wrangling}
 US_data <- read.csv("Input/US_N2OEF.csv")
-CA_data <- read.csv("Input/Rochette_2018_PvsEF.csv") #The data from Rochette 2018 Fig 3
-
-#US data wrangling
+CA_data <- read.csv("Input/Rochette_2018_PvsEF.csv") %>% #The data from Rochette 2018 Fig 3
+           mutate(texture = Drain2)
+  #US data wrangling
 US_data <- US_data %>%
   filter (Crop.type == "Annual") %>%
   filter (Application.amount > 0) %>%
@@ -27,113 +27,139 @@ US_data <- US_data %>%
 US_data <- US_data %>%
   mutate(texture =
   case_when(tolower(Soil.type) %in% c("clay", "silty clay", "silty clay loam", "clay loam", "sandy clay") ~ "Fine",
-            tolower(Soil.type) %in% c("loam soil", "loam", "silt loam", "silt") ~ "Medium",
+            tolower(Soil.type) %in% c("sandy loam","sandy clay loam","loam soil", "loam", "silt loam", "silt") ~ "Medium",
             TRUE ~ "Coarse")
   )
 
 
-```
+US_table <- US_data %>%
+  group_by(Reference, Pub.year) %>%
+  mutate(Reference = paste0(sub(" .*", "", Reference), " et al.")) %>%
+  summarise(
+    State = str_c(unique(State), collapse = ", "),
+    Region = str_c(unique(Region), collapse = ", "),
+    texture = str_c(unique(texture), collapse = ", "),
+    crop = str_c(unique(Crop), collpase =", ")
+  ) %>%
+  ungroup()
 
-## Plot the results
-
-```{r ggplot for USA data, echo=FALSE}
-
-#define function for nonlinear regression
-non.fit <- function (data, a, b) {
-  fit <- nls(EF ~ exp(a*Precipitation + b), 
-           data = data, 
-           start = list(a = a, b = b))
-  residuals <- residuals(fit)
-  SS_RES <- sum(residuals^2)
-  SS_TOT <- sum((data$EF - mean(data$EF))^2)
-  r_squared <- 1 - (SS_RES / SS_TOT)
-
-  # Printing results
-  cat("R-squared:", r_squared, "\n")
-  cat("Fitted a:", coef(fit)[1], "\n")
-  cat("Fitted b:", coef(fit)[2], "\n")
-  
-  # Generate a sequence of x values for plotting the curve
-  x <- data$Precipitation
-  y <- data$EF
-  x_seq <- seq(min(x), max(x), length.out = length(x))
-
-  #plot the curve and data
-  plot(x, y, pch = 16, col = "blue", xlab = "x", ylab = "y", main = "Fitted Curve")
-
-  # Add the fitted curve to the plot
-  #plot(x_seq, predict(fit, newdata = data.frame(x = x_seq)), col = "red", lwd = 2)
-  lines(x_seq, predict(fit, newdata = data.frame(Precipitation = x_seq)), col = "red", lwd = 2)
-
-  # Add legend
-  legend("topright", legend = c("Data", "Fitted Curve"), col = c("blue", "red"), pch = c(16, NA), lwd = c(NA, 2), lty = c(NA, 1))
-}
-
-
-
-
-
-
-#define the function for Rsquare by using the model in Rochette 2018
-Rsquare <- function(data) {
-  x <- data$Precipitation
-  y <- data$EF
-  ybar <- mean(y)
-  #obtain yhat
-  #yhat <- exp(0.00558*x - 7.701)
-  yhat <- exp(0.005019847*x - 6.859982)
-  SS_RES <- sum((y-yhat)^2)
-  SS_TOT <- sum((y-ybar)^2)
-  r_squared <- (1 - (SS_RES / SS_TOT))
-  cat("R-squared:", r_squared, "\n")
-}
-
-
-non.fit(US_data,0.005,0.1)
-non.fit(CA_data,0.005,-7)
-
-Rsquare(CA_data)
-
-
-US_test <- US_data %>%
-  filter(Precipitation < 1000)
-
-
-#medium only or coarse
-US_medium <- US_data %>% 
-  filter(texture == "Medium")
-
-US_coarse <- US_data %>% 
-  filter(texture == "Coarse")
-
-
-
-ggplot() +
-  geom_point(data = CA_data, aes(x = Precipitation, y = EF, shape = Drain2), color = "blue", size = 3, alpha = 0.5) +
-  scale_shape_manual(values = c("square", "triangle", "circle"),
-                      breaks = c("Coarse", "Medium", "Fine"),
-                      labels = c("Coarse", "Medium", "Fine")) +
-  guides(shape = guide_legend(title = "Drain2")) 
-
-
-
-
-
-
-
-ggplot(US_coarse, aes(x = Precipitation, y = EF, colour=texture)) +
-    xlab("Precipitation in growing season") +
-    ylab("EF") +
-    stat_smooth(color = 1, method = 'nls', formula = 'y~exp(a*x+b)',
-                method.args = list(start=c(a=0.01, b=0)), se=FALSE) +
-    geom_point(size=4, pch=21,color = "black", stroke=1.5, aes(fill=texture))
-
-ggplot(CA_data, aes(x = Precipitation, y = EF, colour = texture)) +
-  geom_point(size = 3, pch = 23, color ="black") +
-  geom_point(data = CA_data,aes(x = Precipitation, y = EF), color = "blue", pch = 22, size = 3)
-
-
+#write.csv(US_table,"Output/Study summary.csv",row.names = F)
 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Prepare the function used for analysis
+
+The goal is to see if we can use Canada’s non linear model in the US 1. see if the Canada’s nonlinear model (y = e(0.00558*x-7.701)) fit US data I’ll use Mean sqaure error (MSE) and Symmetric Mean Absolute Percentage Error (SMAPE) 2. Plot a figure to show the dots from CA (hollow) and the dots from US (Solid), soil texture will be Fine (circle), Med (triangle), Coarse (square) 3. Make a table to compare using CA model coefficients and coefficients developed based on US data and their MSE and SMAPE 4. Plot a figure to show the relationship for predict EF values and published values
+
+```{r integrated model, echo=FALSE}
+integrated_model <- function(data, a_start, b_start) {
+# Fit the model using non-linear least squares (NLS)
+fit <- nls(EF ~ exp(a * Precipitation + b),data = data,
+start = list(a = a_start, b = b_start))
+# Extract fitted coefficients
+a_fit <- coef(fit)[1]
+b_fit <- coef(fit)[2]
+# Calculate R-squared
+residuals <- residuals(fit)
+SS_RES <- sum(residuals^2)
+SS_RES <- sum(residuals^2)
+SS_TOT <- sum((data$EF - mean(data$EF))^2)
+r_squared <- 1 - (SS_RES / SS_TOT)
+# Generate predictions based on the fitted model
+data$predictions <- exp(a_fit * data$Precipitation + b_fit)
+data$predictions_CA <-exp(0.00558 * data$Precipitation + (-7.701))
+# Calculate RMSE
+rmse <- sqrt(mean((data$predictions - data$EF)^2))
+rmse_CA <- sqrt(mean((data$predictions_CA - data$EF)^2))
+# Calculate sMAPE
+smape <- mean(abs(data$EF - data$predictions) / ((abs(data$EF) + abs(data$predictions)))) * 100
+smape_CA <- mean(abs(data$EF - data$predictions_CA) / ((abs(data$EF) + abs(data$predictions_CA)))) * 100
+# Create a result table
+results_table <- tibble(
+Metric = c("R-squared", "RMSE","RMSE to CA", "sMAPE", "sMAPE to CA"),
+Value = c(round(r_squared, 4), round(rmse, 4),round (rmse_CA,4), round(smape, 2), round(smape_CA,2))
+)
+# Print the results
+print(results_table)
+# Plot with shapes based on "texture" and "Region" column
+texture_shapes <- case_when(
+data$texture == "Fine" & data$Region == "North" ~ 1,  # Circle for Fine and North
+data$texture == "Fine" & data$Region == "South" ~ 16,  # Filled circle for Fine and South
+data$texture == "Medium" & data$Region == "North" ~ 2,  # Triangle for Medium and North
+data$texture == "Medium" & data$Region == "South" ~ 17,  # Filled triangle for Medium and South
+data$texture == "Coarse" & data$Region == "North" ~ 0,  # Square for Coarse and North
+data$texture == "Coarse" & data$Region == "South" ~ 15,  # Filled square for Coarse and South
+TRUE ~ 0  # Default shape for other combinations
+)
+plot(data$Precipitation, data$EF,
+pch = texture_shapes,
+cex  = 2,
+col = "blue",
+xlab = "Precipitation",
+ylab = "EF",
+main = "Fitted Exponential Model with Texture",
+xlim = c(0, max(data$Precipitation)),
+ylim = c(0, max(data$EF)))
+# Add fitted curve
+curve(exp(a_fit * x + b_fit), from = min(data$Precipitation), to = max(data$Precipitation),
+add = TRUE, col = "red", lwd = 2)
+curve(exp(0.00558 * x + (-7.701)), from = min(data$Precipitation), to = max(data$Precipitation),
+add = TRUE, col = "black", lwd = 2, lty = "dotted")
+# Add legend for texture types
+legend("topleft", legend = c("Fine", "Medium", "Coarse"),
+col = "blue", pch = c(1, 2, 0), title = "Texture")
+#Observation vs prediction plot
+plot(data$EF, data$predictions,
+pch = texture_shapes,
+cex  = 2,
+col = "blue",
+xlab = "Observation",
+ylab = "Prediction",
+main = "Observation vs. prediction",
+xlim = c(0, max(data$EF)),
+ylim = c(0, max(data$EF)))
+# Add 1:1 curve
+abline(a = 0, b = 1)
+# Add legend for texture types
+legend("topleft", legend = c("Fine", "Medium", "Coarse"),
+col = "blue", pch = c(1, 2, 0), title = "Texture")
+
+
+# Return the fit and table as output
+return(list(fit = fit, results = results_table))
+
+
+
+
+}
+
+```
+
+```{r CA data}
+
+integrated_model(CA_data, a_start = 0.005, b_start = -7.7)
+
+```
+
+
+```{r US data}
+integrated_model(US_data, a_start = 0.005, b_start = -7.7)
+
+#Divided to south and north
+US_South <- US_data %>%
+  filter(Region == "South")
+
+US_North <- US_data %>%
+  filter(Region == "North")
+
+
+integrated_model(US_North, a_start = 0.005, b_start = -7.7)
+integrated_model(US_South, a_start = 0.005, b_start = -7.7)
+```
+
+
+```{r US data prediction vs observation}
+
+
+
+```

@@ -1,0 +1,322 @@
+---
+title: "Growing season PET"
+author: "Dr. Chih-Yu Hung"
+date: "2024-09-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse); library(data.table)
+
+PET <- fread("../US data/Climate Normals/PET_perCounty.csv", header = TRUE)
+PET <- PET %>%
+   separate(County_State, into = c("County", "State"), sep = " - ")
+
+
+```
+
+## Write a function to calculate avg. precipitation during growing seasons
+
+```{r funtion for the work}
+PET.sum <- function (county, state, s.year, f.year) {
+  # Define the years and months (May to October)
+  years <- c(s.year:f.year)
+  months <- sprintf("%02d", 5:10)  # 5th to 10th months (May to October)
+  #months <- sprintf("%02d", c(1:7,11:12))  # For Zhu-barker et al., 2015 only
+
+  # Create the pattern for matching precipitation columns for May to October
+  patterns <- paste0("PET_", rep(years, each = length(months)), months)
+  
+  # Find the matching columns in the dataframe
+  matching_columns <- grep(paste(patterns, collapse = "|"), names(PET), value = TRUE)
+
+  # Subset the data for the specified county and state
+  city.t <- subset(PET, County == paste0(county, " County") & State == state)
+  
+  if (nrow(city.t) == 0) {
+    return(NA)  # Return NA if no matching row is found
+  }
+
+  # Subset only the matching columns (May to October for the specified years)
+  city.t <- city.t[, matching_columns, drop = FALSE]
+  
+  # Convert the data to numeric for calculation
+  city.t.numeric <- as.numeric(unlist(city.t))
+
+  # Calculate the mean, excluding NA values and applied the linear regression (CAN PET vs US PET)
+  city.avg <- (sum(city.t.numeric, na.rm = TRUE)/length(years)*12.946+338.92)
+  
+  return(city.avg)
+}
+
+```
+
+
+## Prepare growing season PET for all counties
+```{r 30-y PET}
+# Function to calculate the 30-year average of total evapotranspiration during the growing season (May-October)
+calculate_30y_growing_season_avg_pet <- function(data) {
+  # Define the growing season months (May to October)
+  months <- sprintf("%02d", 5:10)  # May to October, padded with zero
+  
+  # Define the years range (1981-2010)
+  years <- 1981:2010
+  
+  # Initialize an empty matrix to store the annual totals for each row (county/state)
+  annual_totals <- matrix(NA, nrow = nrow(data), ncol = length(years))
+  colnames(annual_totals) <- years
+  
+  # Loop through each year and sum the growing season evapotranspiration (May to October)
+  for (year in years) {
+    # Create the column names for May to October for the current year
+    cols_for_year <- paste0("PET_", year, months)
+    
+    # Check if all required columns for the current year exist in the data
+    if (all(cols_for_year %in% names(data))) {
+      # Sum the growing season columns for the current year (row-wise sum)
+      annual_totals[, as.character(year)] <- rowSums(data[, cols_for_year], na.rm = TRUE)
+    } else {
+      warning(paste("Some columns for year", year, "are missing. Skipping."))
+    }
+  }
+  
+  # Calculate the 30-year average for each row (county/state)
+  data$Avg_PET <- rowMeans(annual_totals, na.rm = TRUE)
+  
+  return(data)
+}
+
+# Example usage
+# Assuming "PET" is your dataframe containing the evapotranspiration data
+PET.avg <- calculate_30y_growing_season_avg_pet(PET) %>%
+           select(County,State,Avg_PET)
+
+
+#Convert US PET to CA PET system. We found that the PET data is estimated with a different model and we need to align this with the Canadian PET
+#I used PET from adjacent county and ecodistrict to make a linear regression
+# The data can be found in PET_CA_US broder.xlsx
+# CA_PET = 12.964 * US_PET + 338.92
+PET.avg <- PET.avg %>%
+  mutate(Avg_PET = Avg_PET*12.946+338.92)
+
+
+#write.csv(PET.avg,"../US data/Climate Normals/PET_perCounty_30y avg.csv", row.names = F) #unit:mm
+
+```
+
+
+
+
+```{r Burzaco et al., 2013}
+#West Lafayette,Tippecanoe, Indiana. 2010, 2011
+PET.sum("Tippecanoe","Indiana", 2010, 2010) #656
+PET.sum("Tippecanoe","Indiana", 1981, 2010) #USE 30-y avg. 638
+
+```
+
+```{r Collins et al., 2011}
+#Prosser, Benton, Washington. 2007-2008
+PET.sum("Benton","Washington", 2007, 2007) #715
+
+PET.sum("Benton","Washington", 2008, 2008) #714
+```
+
+
+
+```{r Dusenbury et al., 2008}
+#Gallatin, Bozeman, Montana. 2004
+PET.sum("Gallatin","Montana", 2004, 2004) #636
+
+PET.sum("Gallatin","Montana", 2005, 2005) #654
+```
+
+
+
+```{r Fernandez et al., 2016}
+#Wells,Faribault, Minnesota. 2014-2015 #only avg. number available
+PET.sum("Faribault","Minnesota", 2014, 2015) #30y
+PET.sum("Faribault","Minnesota", 1981, 2010) #631
+```
+
+```{r Graham et al., 2018}
+#Urbana, Champaign, Illinois. 2015-2017
+PET.sum("Champaign","Illinois", 2015, 2015) #30y
+PET.sum("Champaign","Illinois", 2015, 2015)
+PET.sum("Champaign","Illinois", 2015, 2015)
+PET.sum("Champaign","Illinois", 1981, 2010) #643
+```
+
+
+
+```{r Guzman et al., 2015}
+#Ames, Story, Iowa. 2009-2010
+PET.sum("Story","Iowa", 2009, 2009) #624
+
+PET.sum("Story","Iowa", 2010, 2010) #647
+```
+
+```{r Halvorson et al., 2010}
+#Fort Collins, Larimer, Colorado. 2007-2008
+PET.sum("Larimer","Colorado", 2007, 2007) #673
+
+PET.sum("Larimer","Colorado", 2008, 2008) #659
+```
+
+```{r Hoben et al., 2011}
+#Stockbridge, Ingham, Michigan. 2007-2008
+#Reese, Tuscola, Michigan. 2007-2008
+#Mason, Mason, Michigan. 2007-2008
+#Eastlansing, Ingham, Michigan. 2007-2008
+#Fairgrove, Tuscola, Michigan. 2007-2008
+PET.sum("Ingham","Michigan", 2007, 2007) #649
+PET.sum("Ingham","Michigan", 2008, 2008) #631
+
+PET.sum("Tuscola","Michigan", 2007, 2007) #634
+PET.sum("Tuscola","Michigan", 2008, 2008) #613
+
+PET.sum("Mason","Michigan", 2007, 2007) #627
+```
+
+```{r Hyatt et al., 2010}
+#Becker, Becker, Minnesota. 2008-2009
+PET.sum("Becker","Minnesota", 2008, 2008) #629
+PET.sum("Becker","Minnesota", 2009, 2009) #608
+
+```
+
+
+
+```{r Jarecki et al., 2009}
+#Ames, Story, Iowa. 2005-2006
+PET.sum("Story","Iowa", 2005, 2006) #661
+```
+
+
+
+```{r Koehn et al., 2021}
+#Kimberly, Story, Idaho. 2013-2016
+PET.sum("Twin Falls","Idaho", 2013, 2013) #
+PET.sum("Twin Falls","Idaho", 2014, 2014) #
+PET.sum("Twin Falls","Idaho", 2015, 2015) #
+PET.sum("Twin Falls","Idaho", 2016, 2016) #
+PET.sum("Twin Falls","Idaho", 1981, 2010) #732
+```
+
+```{r Li et al., 2019}
+#Aurora, Brookings, South Dakota. 2014-2016
+PET.sum("Brookings","South Dakota", 2014, 2014) #
+PET.sum("Brookings","South Dakota", 2015, 2015) #
+PET.sum("Brookings","South Dakota", 2016, 2016) #
+PET.sum("Brookings","South Dakota", 1981, 2010) #641
+```
+
+
+
+```{r Liebig et al., 2008}
+#Mandan, Morton, North Dakota. 2005
+PET.sum("Morton","North Dakota", 2005, 2005) #639
+```
+
+```{r Mahama et al., 2020}
+#Manhattan, Riley, Kansas. 2013-2014
+PET.sum("Riley","Kansas", 2013, 2013) #
+PET.sum("Riley","Kansas", 2013, 2013) #
+PET.sum("Riley","Kansas", 1981, 2010) #689
+```
+
+
+
+```{r Maharjan et al., 2014}
+#Rosemount, Dakota, Minnesota. 2010-2011
+PET.sum("Dakota","Minnesota", 2010, 2010) #634
+PET.sum("Dakota","Minnesota", 2011, 2011) #339
+```
+
+```{r McSwiney et al., 2005}
+#Rosemount, Dakota, Minnesota. 2001-2003
+PET.sum("Ingham","Michigan", 2001, 2003) #601
+```
+
+```{r Nash et al., 2012}
+#Novelty, Knox, Missouri. 2008-2011
+PET.sum("Knox","Missouri", 2009, 2009) #633
+PET.sum("Knox","Missouri", 2010, 2010) #663
+```
+
+
+
+```{r Omonode et al., 2019}
+#West Lafayette,Tippecanoe, Indiana. 2015, 2016
+PET.sum("Tippecanoe","Indiana", 2015, 2015) #
+PET.sum("Tippecanoe","Indiana", 2016, 2016) #
+
+PET.sum("Tippecanoe","Indiana", 1981, 2010) #30y 638
+
+```
+
+
+```{r Parkin et al., 2014}
+#Boone, Iowa. 2009-2011
+PET.sum("Boone","Iowa", 2009, 2009) #626
+PET.sum("Boone","Iowa", 2010, 2010) #645
+PET.sum("Boone","Iowa", 2011, 2011) # use the 30 avg. 645
+
+```
+
+
+```{r Sainju et al., 2012}
+#Sidney, Richland, Montana. 2008-2011
+PET.sum("Richland","Montana", 2008, 2008) #690
+PET.sum("Richland","Montana", 2009, 2009) #672
+PET.sum("Richland","Montana", 2010, 2010) #649
+PET.sum("Richland","Montana", 2011, 2011) #30y avg 687
+PET.sum("Richland","Montana", 1981, 2010) #30y avg
+```
+
+```{r Sainju et al., 2012}
+#Nesson Valley, Williams, North Dakota. 2008-2011
+PET.sum("Williams","North Dakota", 2008, 2008) #663
+PET.sum("Williams","North Dakota", 2009, 2009) #644
+PET.sum("Williams","North Dakota", 2010, 2010) #622
+PET.sum("Williams","North Dakota", 1981, 2010) #30y avg. 658
+```
+
+```{r Shoji et al., 2001}
+#Longmont, Boulder, Colorado. 1993
+PET.sum("Boulder","Colorado", 1993, 1993) #648
+```
+
+
+```{r Sistani et al., 2019}
+#Bowling Green, Warren, Kentucky. 2010
+PET.sum("Warren","Kentucky", 2010, 2010) #675
+PET.sum("Warren","Kentucky", 1981, 2010) #30y avg. 644
+```
+```{r Snell et al., 2014}
+#Mead, Saunders, Nebraska. 2011-2012
+PET.sum("Saunders","Nebraska", 2011, 2011) #
+PET.sum("Saunders","Nebraska", 2012, 2012) #
+PET.sum("Saunders","Nebraska", 1981, 2010) #30y avg. 660
+
+```
+
+```{r Thornto et al., 1996}
+#Jackson, Madison, Tennessee. 1993
+PET.sum("Madison","Tennessee", 1993, 1993) #663
+```
+
+
+```{r Venterea et al., 2016}
+#St Paul,Ramsey, Minnesota. 2014-2015 #only avg. number available
+PET.sum("Ramsey","Minnesota", 2014, 2015)#
+PET.sum("Ramsey","Minnesota", 1981, 2010)#30y 631
+```
+
+```{r Zhu-Barker et al., 2015}
+#Dixon, Solano, California. 2009-2011
+PET.sum("Solano","California", 2009, 2010) #710
+PET.sum("Solano","California", 2010, 2011) #520
+PET.sum("Solano","California", 1981, 2010) #30y avg. 714
+
+```

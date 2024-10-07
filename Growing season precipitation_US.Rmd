@@ -22,7 +22,8 @@ Rain.sum <- function (county, state, s.year, f.year) {
   # Define the years and months (May to October)
   years <- c(s.year:f.year)
   months <- sprintf("%02d", 5:10)  # 5th to 10th months (May to October)
-
+  #months <- sprintf("%02d", c(1:7,11:12))  # for Zhu-Barker et al., 2015 only
+  
   # Create the pattern for matching precipitation columns for May to October
   patterns <- paste0("P_", rep(years, each = length(months)), months)
   
@@ -43,12 +44,58 @@ Rain.sum <- function (county, state, s.year, f.year) {
   city.t.numeric <- as.numeric(unlist(city.t))
 
   # Calculate the mean, excluding NA values
-  city.avg <- sum(city.t.numeric, na.rm = TRUE)
+  city.avg <- sum(city.t.numeric, na.rm = TRUE)/length(years)
   
   return(city.avg)
 }
 
 ```
+
+
+## Prepare growing season rain for all counties
+```{r 30-y rain}
+# Function to calculate the 30-year average of total evapotranspiration during the growing season (May-October)
+calculate_30y_growing_season_avg_rain <- function(data) {
+  # Define the growing season months (May to October)
+  months <- sprintf("%02d", 5:10)  # May to October, padded with zero
+  
+  # Define the years range (1981-2010)
+  years <- 1981:2010
+  
+  # Initialize an empty matrix to store the annual totals for each row (county/state)
+  annual_totals <- matrix(NA, nrow = nrow(data), ncol = length(years))
+  colnames(annual_totals) <- years
+  
+  # Loop through each year and sum the growing season evapotranspiration (May to October)
+  for (year in years) {
+    # Create the column names for May to October for the current year
+    cols_for_year <- paste0("P_", year, months)
+    
+    # Check if all required columns for the current year exist in the data
+    if (all(cols_for_year %in% names(data))) {
+      # Sum the growing season columns for the current year (row-wise sum)
+      annual_totals[, as.character(year)] <- rowSums(data[, cols_for_year], na.rm = TRUE)
+    } else {
+      warning(paste("Some columns for year", year, "are missing. Skipping."))
+    }
+  }
+  
+  # Calculate the 30-year average for each row (county/state)
+  data$Avg_P <- rowMeans(annual_totals, na.rm = TRUE)
+  
+  return(data)
+}
+
+# Example usage
+# Assuming "PET" is your dataframe containing the evapotranspiration data
+Rain.avg <- calculate_30y_growing_season_avg_rain(Rain) %>%
+           select(County,State,Avg_P)
+
+
+write.csv(Rain.avg,"../US data/Climate Normals/Rain_perCounty_30y avg.csv", row.names = F) #unit:mm
+
+```
+
 
 
 ```{r Burzaco et al., 2013}
@@ -68,11 +115,28 @@ Rain.sum("Benton","Washington", 2008, 2008) #42
 
 
 ```{r Dusenbury et al., 2008}
-#Gallatin, Bozeman, Montana. 2004
+#Gallatin, Bozeman, Montana. 2004, use data in the paper
 Rain.sum("Gallatin","Montana", 2004, 2004) #390
 
 Rain.sum("Gallatin","Montana", 2005, 2005) #376
 ```
+
+```{r Fernandez et al., 2016}
+#Wells,Faribault, Minnesota. 2014-2015 #only avg. number available
+Rain.sum("Faribault","Minnesota", 2014, 2015) #566
+Rain.sum("Faribault","Minnesota", 1981, 2010) #598
+```
+
+```{r Graham et al., 2018}
+#Urbana, Champaign, Illinois. 2015-2017 #use number in the paper
+Rain.sum("Champaign","Illinois", 2015, 2015) #30y
+Rain.sum("Champaign","Illinois", 2015, 2015)
+Rain.sum("Champaign","Illinois", 2015, 2015)
+Rain.sum("Champaign","Illinois", 1981, 2010) #574
+```
+
+
+
 ```{r Guzman et al., 2015}
 #Ames, Story, Iowa. 2009-2010
 Rain.sum("Story","Iowa", 2009, 2009) #666
@@ -87,9 +151,34 @@ Rain.sum("Larimer","Colorado", 2007, 2007) #286
 Rain.sum("Larimer","Colorado", 2008, 2008) #290
 ```
 
+
+```{r Hoben et al., 2011}
+#Use data from the paper
+#Stockbridge, Ingham, Michigan. 2007-2008
+#Reese, Tuscola, Michigan. 2007-2008
+#Mason, Mason, Michigan. 2007-2008
+#Eastlansing, Ingham, Michigan. 2007-2008
+#Fairgrove, Tuscola, Michigan. 2007-2008
+Rain.sum("Ingham","Michigan", 2007, 2007) #564
+Rain.sum("Ingham","Michigan", 2008, 2008) #601
+
+Rain.sum("Tuscola","Michigan", 2007, 2007) #438
+Rain.sum("Tuscola","Michigan", 2008, 2008) #576
+
+Rain.sum("Mason","Michigan", 2007, 2007) #459
+```
+
+```{r Hyatt et al., 2010}
+#Becker, Becker, Minnesota. 2008-2009
+Rain.sum("Becker","Minnesota", 2008, 2008) #636
+Rain.sum("Becker","Minnesota", 2009, 2009) #497
+
+```
+
+
 ```{r Jarecki et al., 2009}
 #Ames, Story, Iowa. 2005-2006
-Rain.sum("Story","Iowa", 2005, 2006) #1079
+Rain.sum("Story","Iowa", 2005, 2006) #539
 ```
 
 
@@ -102,10 +191,45 @@ Rain.sum("Twin Falls","Idaho", 2015, 2015) #162
 Rain.sum("Twin Falls","Idaho", 2016, 2016) #178
 ```
 
+```{r Li et al., 2019}
+#Aurora, Brookings, South Dakota. 2014-2016
+Rain.sum("Brookings","South Dakota", 2014, 2014) #
+Rain.sum("Brookings","South Dakota", 2015, 2015) #
+Rain.sum("Brookings","South Dakota", 2016, 2016) #
+Rain.sum("Brookings","South Dakota", 1981, 2010) #485
+```
+
 ```{r Liebig et al., 2008}
 #Mandan, Morton, North Dakota. 2005
 Rain.sum("Morton","North Dakota", 2005, 2005) #395
 ```
+
+```{r Mahama et al., 2020}
+#Manhattan,Riley, Kansas. 2013 use data in the paper
+Rain.sum("Riley","Kansas", 2013, 2013) #641
+Rain.sum("Riley","Kansas", 2014, 2014) #562
+```
+
+```{r Maharjan et al., 2014}
+#Rosemount, Dakota, Minnesota. 2010-2011 used data in the paper
+Rain.sum("Dakota","Minnesota", 2010, 2010) #809
+Rain.sum("Dakota","Minnesota", 2011, 2011) #502
+```
+
+
+
+```{r McSwiney et al., 2005}
+#East Lansing, Ingham, Michigan. 2001-2003
+Rain.sum("Ingham","Michigan", 2001, 2003) #481
+```
+
+
+```{r Nash et al., 2012}
+#Novelty, Knox, Missouri. 2008-2011 used data in the paper
+Rain.sum("Knox","Missouri", 2009, 2009) #826
+Rain.sum("Knox","Missouri", 2010, 2010) #931
+```
+
 
 ```{r Omonode et al., 2019}
 #West Lafayette,Tippecanoe, Indiana. 2015, 2016
@@ -114,10 +238,53 @@ Rain.sum("Tippecanoe","Indiana", 2016, 2016) #618
 
 ```
 
+```{r Parkin et al., 2014}
+#Boone, Iowa. 2009-2011
+Rain.sum("Boone","Iowa", 2009, 2009) #602
+Rain.sum("Boone","Iowa", 2010, 2010) #924
+Rain.sum("Boone","Iowa", 2011, 2011) #429
+
+```
+
+```{r Sainju et al., 2012}
+#Sidney, Richland, Montana. 2008-2011
+Rain.sum("Richland","Montana", 2008, 2008) #236
+Rain.sum("Richland","Montana", 2009, 2009) #309
+Rain.sum("Richland","Montana", 2010, 2010) #461
+Rain.sum("Richland","Montana", 2011, 2011) #399
+```
+
+```{r Sainju et al., 2012}
+#Nesson Valley, Williams, North Dakota. 2008-2011
+Rain.sum("Williams","North Dakota", 2008, 2008) #303
+Rain.sum("Williams","North Dakota", 2009, 2009) #278
+Rain.sum("Williams","North Dakota", 2010, 2010) #442
+Rain.sum("Williams","North Dakota", 2011, 2011) #428
+```
+
+
 ```{r Shoji et al., 2001}
 #Longmont, Boulder, Colorado. 1993
 Rain.sum("Boulder","Colorado", 1993, 1993) #300
 ```
+
+```{r Sistani et al., 2019}
+#Bowling Green, Warren, Kentucky. 2010 used data in the paper
+Rain.sum("Warren","Kentucky", 2010, 2010) #733
+Rain.sum("Warren","Kentucky", 2011, 2011) #699
+Rain.sum("Warren","Kentucky", 1981, 2010) #30y avg. 625
+```
+
+
+```{r Snell et al., 2014}
+#Mead, Saunders, Nebraska. 2011-2012 used the data in the paper
+Rain.sum("Saunders","Nebraska", 2011, 2011) #551
+Rain.sum("Saunders","Nebraska", 2012, 2012) #328
+Rain.sum("Saunders","Nebraska", 1981, 2010) #30y avg. 541
+
+```
+
+
 
 ```{r Thornto et al., 1996}
 #Jackson, Madison, Tennessee. 1993
@@ -125,55 +292,18 @@ Rain.sum("Madison","Tennessee", 1993, 1993) #512
 ```
 
 
-
-
-```{r Sainju et al., 2012}
-#Sidney, Richland, Montana. 2008-2011
-Temp.avg("Richland","Montana", 2008, 2008) #5.69
-Temp.avg("Richland","Montana", 2009, 2009) #5.23
-Temp.avg("Richland","Montana", 2010, 2010) #5.32
-Temp.avg("Richland","Montana", 2011, 2011) #5.58
-```
-
-```{r Sainju et al., 2012}
-#Nesson Valley, Williams, North Dakota. 2008-2011
-Temp.avg("Williams","North Dakota", 2008, 2008) #4.19
-Temp.avg("Williams","North Dakota", 2009, 2009) #3.34
-Temp.avg("Williams","North Dakota", 2010, 2010) #4.50
-Temp.avg("Williams","North Dakota", 2011, 2011) #4.48
-```
-```{r Nash et al., 2012}
-#Novelty, Knox, Missouri. 2008-2011
-Temp.avg("Knox","Missouri", 2009, 2009) #10.55
-Temp.avg("Knox","Missouri", 2010, 2010) #11.17
-```
-
-```{r Parkin et al., 2014}
-#Boone, Iowa. 2009-2011
-Temp.avg("Boone","Iowa", 2009, 2009) #8.21
-Temp.avg("Boone","Iowa", 2010, 2010) #8.92
-Temp.avg("Boone","Iowa", 2011, 2011) #9.01
-
-```
-
-```{r Fernandez et al., 2016}
-#Wells,Faribault, Minnesota. 2014-2015 #only avg. number available
-Temp.avg("Faribault","Minnesota", 2014, 2015) #7.16
-```
-
 ```{r Venterea et al., 2016}
 #St Paul,Ramsey, Minnesota. 2014-2015 #only avg. number available
-Temp.avg("Ramsey","Minnesota", 2014, 2015) #7.1
+Rain.sum("Ramsey","Minnesota", 2014, 2015) #683
+Rain.sum("Ramsey","Minnesota", 1981, 2010) #30y avg 584
 ```
 
+```{r Zhu-Barker et al., 2015}
+#Dixon, Solano, California. 2009-2010
+#The growing seasons are Nov to July (9-months), I changed my code to calculate here
+Rain.sum("Solano","California", 2009, 2010) #516
+Rain.sum("Solano","California", 2010, 2011) #543
+Rain.sum("Solano","California", 1981, 2010) #30y avg. 529
 
-
-
-```{r Mahama et al., 2020}
-#Manhattan,Riley, Kansas. 2013
-Temp.avg("Riley","Kansas", 2013, 2013) #11.23
-
-Temp.avg("Riley","Kansas", 2014, 2014) #11.46
 ```
-
 
