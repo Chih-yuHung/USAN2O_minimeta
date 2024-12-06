@@ -102,7 +102,7 @@ PET.avg <- PET.avg %>%
 
 
 #write.csv(PET.avg,"../US data/Climate Normals/PET_perCounty_30y avg.csv", row.names = F) #unit:mm
-
+sum(PET.avg$Avg_PET >=800) #53 counties over 3104 couties
 ```
 
 
@@ -111,6 +111,7 @@ PET.avg <- PET.avg %>%
 ```{r Burzaco et al., 2013}
 #West Lafayette,Tippecanoe, Indiana. 2010, 2011
 PET.sum("Tippecanoe","Indiana", 2010, 2010) #656
+PET.sum("Tippecanoe","Indiana", 2011, 2011) #635
 PET.sum("Tippecanoe","Indiana", 1981, 2010) #USE 30-y avg. 638
 
 ```
@@ -135,15 +136,15 @@ PET.sum("Gallatin","Montana", 2005, 2005) #654
 
 ```{r Fernandez et al., 2016}
 #Wells,Faribault, Minnesota. 2014-2015 #only avg. number available
-PET.sum("Faribault","Minnesota", 2014, 2015) #30y
+PET.sum("Faribault","Minnesota", 2014, 2015) #625
 PET.sum("Faribault","Minnesota", 1981, 2010) #631
 ```
 
 ```{r Graham et al., 2018}
 #Urbana, Champaign, Illinois. 2015-2017
-PET.sum("Champaign","Illinois", 2015, 2015) #30y
-PET.sum("Champaign","Illinois", 2015, 2015)
-PET.sum("Champaign","Illinois", 2015, 2015)
+PET.sum("Champaign","Illinois", 2015, 2015) #642
+PET.sum("Champaign","Illinois", 2016, 2016) #644
+PET.sum("Champaign","Illinois", 2017, 2017) #652
 PET.sum("Champaign","Illinois", 1981, 2010) #643
 ```
 
@@ -196,18 +197,18 @@ PET.sum("Story","Iowa", 2005, 2006) #661
 
 ```{r Koehn et al., 2021}
 #Kimberly, Story, Idaho. 2013-2016
-PET.sum("Twin Falls","Idaho", 2013, 2013) #
-PET.sum("Twin Falls","Idaho", 2014, 2014) #
-PET.sum("Twin Falls","Idaho", 2015, 2015) #
-PET.sum("Twin Falls","Idaho", 2016, 2016) #
+PET.sum("Twin Falls","Idaho", 2013, 2013) #737
+PET.sum("Twin Falls","Idaho", 2014, 2014) #740
+PET.sum("Twin Falls","Idaho", 2015, 2015) #752
+PET.sum("Twin Falls","Idaho", 2016, 2016) #737
 PET.sum("Twin Falls","Idaho", 1981, 2010) #732
 ```
 
 ```{r Li et al., 2019}
 #Aurora, Brookings, South Dakota. 2014-2016
-PET.sum("Brookings","South Dakota", 2014, 2014) #
-PET.sum("Brookings","South Dakota", 2015, 2015) #
-PET.sum("Brookings","South Dakota", 2016, 2016) #
+PET.sum("Brookings","South Dakota", 2014, 2014) #629
+PET.sum("Brookings","South Dakota", 2015, 2015) #632
+PET.sum("Brookings","South Dakota", 2016, 2016) #645
 PET.sum("Brookings","South Dakota", 1981, 2010) #641
 ```
 
@@ -220,8 +221,8 @@ PET.sum("Morton","North Dakota", 2005, 2005) #639
 
 ```{r Mahama et al., 2020}
 #Manhattan, Riley, Kansas. 2013-2014
-PET.sum("Riley","Kansas", 2013, 2013) #
-PET.sum("Riley","Kansas", 2013, 2013) #
+PET.sum("Riley","Kansas", 2013, 2013) #685
+PET.sum("Riley","Kansas", 2014, 2014) #688
 PET.sum("Riley","Kansas", 1981, 2010) #689
 ```
 
@@ -230,7 +231,7 @@ PET.sum("Riley","Kansas", 1981, 2010) #689
 ```{r Maharjan et al., 2014}
 #Rosemount, Dakota, Minnesota. 2010-2011
 PET.sum("Dakota","Minnesota", 2010, 2010) #634
-PET.sum("Dakota","Minnesota", 2011, 2011) #339
+PET.sum("Dakota","Minnesota", 2011, 2011) #636
 ```
 
 ```{r McSwiney et al., 2005}
@@ -248,8 +249,8 @@ PET.sum("Knox","Missouri", 2010, 2010) #663
 
 ```{r Omonode et al., 2019}
 #West Lafayette,Tippecanoe, Indiana. 2015, 2016
-PET.sum("Tippecanoe","Indiana", 2015, 2015) #
-PET.sum("Tippecanoe","Indiana", 2016, 2016) #
+PET.sum("Tippecanoe","Indiana", 2015, 2015) #623
+PET.sum("Tippecanoe","Indiana", 2016, 2016) #632
 
 PET.sum("Tippecanoe","Indiana", 1981, 2010) #30y 638
 
@@ -270,7 +271,7 @@ PET.sum("Boone","Iowa", 2011, 2011) # use the 30 avg. 645
 PET.sum("Richland","Montana", 2008, 2008) #690
 PET.sum("Richland","Montana", 2009, 2009) #672
 PET.sum("Richland","Montana", 2010, 2010) #649
-PET.sum("Richland","Montana", 2011, 2011) #30y avg 687
+PET.sum("Richland","Montana", 2011, 2011) #665
 PET.sum("Richland","Montana", 1981, 2010) #30y avg
 ```
 
@@ -291,12 +292,13 @@ PET.sum("Boulder","Colorado", 1993, 1993) #648
 ```{r Sistani et al., 2019}
 #Bowling Green, Warren, Kentucky. 2010
 PET.sum("Warren","Kentucky", 2010, 2010) #675
+PET.sum("Warren","Kentucky", 2011, 2011) #640
 PET.sum("Warren","Kentucky", 1981, 2010) #30y avg. 644
 ```
 ```{r Snell et al., 2014}
 #Mead, Saunders, Nebraska. 2011-2012
-PET.sum("Saunders","Nebraska", 2011, 2011) #
-PET.sum("Saunders","Nebraska", 2012, 2012) #
+PET.sum("Saunders","Nebraska", 2011, 2011) #663
+PET.sum("Saunders","Nebraska", 2012, 2012) #738
 PET.sum("Saunders","Nebraska", 1981, 2010) #30y avg. 660
 
 ```
@@ -309,14 +311,14 @@ PET.sum("Madison","Tennessee", 1993, 1993) #663
 
 ```{r Venterea et al., 2016}
 #St Paul,Ramsey, Minnesota. 2014-2015 #only avg. number available
-PET.sum("Ramsey","Minnesota", 2014, 2015)#
+PET.sum("Ramsey","Minnesota", 2014, 2015)#624
 PET.sum("Ramsey","Minnesota", 1981, 2010)#30y 631
 ```
 
 ```{r Zhu-Barker et al., 2015}
 #Dixon, Solano, California. 2009-2011
 PET.sum("Solano","California", 2009, 2010) #710
-PET.sum("Solano","California", 2010, 2011) #520
+PET.sum("Solano","California", 2010, 2011) #738
 PET.sum("Solano","California", 1981, 2010) #30y avg. 714
 
 ```

@@ -92,8 +92,8 @@ Rain.avg <- calculate_30y_growing_season_avg_rain(Rain) %>%
            select(County,State,Avg_P)
 
 
-write.csv(Rain.avg,"../US data/Climate Normals/Rain_perCounty_30y avg.csv", row.names = F) #unit:mm
-
+#write.csv(Rain.avg,"../US data/Climate Normals/Rain_perCounty_30y avg.csv", row.names = F) #unit:mm
+sum(Rain.avg$Avg_P >= 800) #104 counties over 3104 counties
 ```
 
 
