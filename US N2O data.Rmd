@@ -47,6 +47,53 @@ US_table <- US_data %>%
 
 ```
 
+## US map for data distribution
+We can see most data in Iowa and Texa. Corn belt and Southern plain have most of data.
+
+```{r US map to see data distribution}
+# Count the number of occurrences per state
+state_counts <- US_data %>%
+  group_by(State) %>%
+  summarize(Count = n())
+
+# Get U.S. state map data
+us_states <- map_data("state")
+
+# Make sure the State names in your data match the map data format
+state_counts$State <- tolower(state_counts$State)
+
+# Calculate the centroids for each state to get long and lat
+state_centroids <- us_states %>%
+  group_by(region) %>%
+  summarize(long = mean(range(long)), lat = mean(range(lat)))
+
+# Merge the state centroids with the counts
+state_counts <- state_counts %>%
+  inner_join(state_centroids, by = c("State" = "region"))
+
+# Plot the map
+data_map <- ggplot() +
+  # Draw the U.S. state map
+  geom_polygon(data = us_states, aes(x = long, y = lat, group = group),
+               fill = "lightgray", color = "white") +
+  # Add bubbles sized by the count
+  geom_point(data = state_counts, aes(x = long, y = lat, size = Count),
+             color = "blue", alpha = 0.6) +
+  scale_size(range = c(1,10), name = "Data Count") + # Adjust the range for bubble sizes
+  labs(title = "Data Counts by State",
+       x = "Longitude", y = "Latitude") +
+  theme_minimal()
+
+ggsave(data_map,filename = "Output/data_map.png", width = 16, height = 9)
+
+#To check data availablilty in the West
+# data.west<- data %>%
+#   filter(State %in% c("Montana", "Texas", "North Dakota")) %>%
+#   filter(Soil.texture == "Medium")
+```
+
+
+
 ## Prepare the function used for analysis
 
 The goal is to see if we can use Canada’s non linear model in the US 1. see if the Canada’s nonlinear model (y = e(0.00558*x-7.701)) fit US data I’ll use Mean sqaure error (MSE) and Symmetric Mean Absolute Percentage Error (SMAPE) 2. Plot a figure to show the dots from CA (hollow) and the dots from US (Solid), soil texture will be Fine (circle), Med (triangle), Coarse (square) 3. Make a table to compare using CA model coefficients and coefficients developed based on US data and their MSE and SMAPE 4. Plot a figure to show the relationship for predict EF values and published values
