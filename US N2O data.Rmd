@@ -127,10 +127,6 @@ col = "blue", pch = c(1, 2, 0), title = "Texture")
 
 # Return the fit and table as output
 return(list(fit = fit, results = results_table))
-
-
-
-
 }
 
 ```
@@ -155,11 +151,4 @@ US_North <- US_data %>%
 
 integrated_model(US_North, a_start = 0.005, b_start = -7.7)
 integrated_model(US_South, a_start = 0.005, b_start = -7.7)
-```
-
-
-```{r US data prediction vs observation}
-
-
-
 ```
